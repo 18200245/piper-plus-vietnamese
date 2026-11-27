@@ -18,6 +18,7 @@ from .commons import (
     slice_segments,
 )
 from .dataset import Batch, PiperDataset, SpeakerBalancedBatchSampler, UtteranceCollate
+from .epoch_sample import resolve_sample_pool, synthesize_random_dataset_sample
 from .losses import (
     dino_loss,
     discriminator_loss,
@@ -183,6 +184,7 @@ class VitsModel(pl.LightningModule):
         num_speakers: int,
         num_languages: int = 1,
         audio_log_epochs: int = 1,  # Log audio samples to WandB every N epochs
+        sample_tts_every_n_epochs: int = 0,  # Synthesize 1 random dataset sample to WAV every N epochs
         # audio
         resblock="2",
         resblock_kernel_sizes=(3, 5, 7),
@@ -596,13 +598,72 @@ class VitsModel(pl.LightningModule):
         ]
 
     def on_train_epoch_end(self):
-        """Step LR schedulers at the end of each epoch.
+        """Step LR schedulers at the end of each epoch and optionally test TTS.
 
         With automatic_optimization=False, Lightning does not step schedulers
         automatically. We must do it manually.
         """
         for sch in self.lr_schedulers():
             sch.step()
+
+        every_n = int(getattr(self.hparams, "sample_tts_every_n_epochs", 0) or 0)
+        if every_n > 0 and (self.current_epoch + 1) % every_n == 0:
+            self._log_epoch_tts_sample()
+
+    def _log_epoch_tts_sample(self) -> None:
+        """Synthesize one random utterance from the dataset at epoch end."""
+        trainer = getattr(self, "trainer", None)
+        is_zero = trainer.is_global_zero if trainer is not None else True
+
+        if is_zero:
+            try:
+                pool = resolve_sample_pool(
+                    getattr(self, "_train_dataset", None),
+                    getattr(self, "_val_dataset", None),
+                    getattr(self, "_test_dataset", None),
+                )
+                out_dir = Path(trainer.default_root_dir) if trainer is not None else Path(".")
+                record = synthesize_random_dataset_sample(
+                    self.model_g,
+                    pool,
+                    out_dir,
+                    epoch=int(self.current_epoch) + 1,
+                    global_step=int(self.global_step),
+                    sample_rate=int(self.hparams.sample_rate),
+                    num_speakers=int(self.hparams.num_speakers),
+                    num_languages=int(self.hparams.num_languages),
+                    spk_embed_dim=int(self.hparams.get("spk_embed_dim", 192)),
+                    device=self.device,
+                )
+                if record is not None:
+                    audio_float = record.pop("audio_float", None)
+                    if audio_float is not None and trainer is not None:
+                        for logger in getattr(trainer, "loggers", []):
+                            exp = getattr(logger, "experiment", None)
+                            if exp is not None and hasattr(exp, "add_audio"):
+                                try:
+                                    exp.add_audio(
+                                        "epoch_sample/tts",
+                                        audio_float,
+                                        global_step=int(self.global_step),
+                                        sample_rate=int(self.hparams.sample_rate),
+                                    )
+                                except Exception:
+                                    pass
+                    clean_text = " ".join(record["text"].splitlines())
+                    print(
+                        f"[EPOCH_TTS] epoch={record['epoch']} | step={record['global_step']} "
+                        f"| dur={record['duration_sec']:.2f}s | wav={record['wav_path']} "
+                        f"| text={clean_text}",
+                        flush=True,
+                    )
+                    if torch.cuda.is_available():
+                        torch.cuda.empty_cache()
+            except Exception as exc:
+                _LOGGER.warning("Failed to synthesize epoch TTS sample: %s", exc)
+
+        if trainer is not None and trainer.world_size > 1:
+            torch.distributed.barrier()
 
     def on_train_epoch_start(self):
         """エポック開始時にSpeakerBalancedBatchSamplerのepochを更新"""
@@ -1487,6 +1548,13 @@ class VitsModel(pl.LightningModule):
             type=int,
             default=1,
             help="Log audio samples to WandB every N epochs (default: 1, 0=disable)",
+        )
+        parser.add_argument(
+            "--sample-tts-every-n-epochs",
+            type=int,
+            default=0,
+            help="Synthesize 1 random dataset utterance to <default_root_dir>/epoch_samples/epoch_XXXX.wav "
+            "every N training epochs (default: 0, disabled).",
         )
         parser.add_argument(
             "--max-phoneme-ids",

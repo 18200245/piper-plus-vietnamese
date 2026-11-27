@@ -263,3 +263,104 @@ def test_vits_model_prosody_language_ids_gating_for_vi():
     assert not torch.allclose(out_active[2], out_zero[2])
     # EN (lid=1) is masked out before prosody_proj
     assert torch.allclose(out_active[1], out_zero[1])
+
+
+def test_synthesize_random_dataset_sample_writes_wav_and_restores_train_mode(tmp_path: Path):
+    """Verify per-epoch random dataset TTS sampling produces a valid WAV and preserves train()."""
+    import random
+
+    import scipy.io.wavfile
+    torch = pytest.importorskip("torch")
+    from torch.utils.data import Subset
+
+    from piper_train.vits.dataset import UtteranceTensors
+    from piper_train.vits.epoch_sample import resolve_sample_pool, synthesize_random_dataset_sample
+    from piper_train.vits.models import SynthesizerTrn
+
+    class _DummyDataset:
+        def __init__(self, items):
+            self.items = items
+
+        def __len__(self):
+            return len(self.items)
+
+        def __getitem__(self, idx):
+            return self.items[idx]
+
+    torch.manual_seed(0)
+    model_g = SynthesizerTrn(
+        n_vocab=199,
+        spec_channels=513,
+        segment_size=8192,
+        inter_channels=192,
+        hidden_channels=192,
+        filter_channels=768,
+        n_heads=2,
+        n_layers=6,
+        kernel_size=3,
+        p_dropout=0.1,
+        resblock="2",
+        resblock_kernel_sizes=(3, 5, 7),
+        resblock_dilation_sizes=((1, 2), (2, 6), (3, 12)),
+        upsample_rates=(4, 4),
+        upsample_initial_channel=256,
+        upsample_kernel_sizes=(16, 16),
+        n_speakers=1,
+        n_languages=7,
+        gin_channels=512,
+        prosody_dim=16,
+        prosody_language_ids={0, 6},
+    )
+    model_g.train()
+
+    items = [
+        UtteranceTensors(
+            phoneme_ids=torch.tensor([1, 20, 21, 2], dtype=torch.long),
+            spectrogram=torch.zeros(513, 4),
+            audio_norm=torch.zeros(1, 256),
+            language_id=torch.tensor([6], dtype=torch.long),
+            text=txt,
+            prosody_features=torch.tensor([[0, 0, 0], [3, 2, 2], [3, 2, 2], [0, 0, 0]], dtype=torch.long),
+        )
+        for txt in ("Xin chào", "Trời hôm nay đẹp", "Tôi thích nghe nhạc")
+    ]
+    base_ds = _DummyDataset(items)
+    train_subset = Subset(base_ds, [0, 1])
+    val_subset = Subset(base_ds, [2])
+
+    pool = resolve_sample_pool(train_subset, val_subset, None)
+    assert pool is base_ds
+
+    record = synthesize_random_dataset_sample(
+        model_g,
+        pool,
+        tmp_path,
+        epoch=1,
+        global_step=10,
+        sample_rate=22050,
+        num_languages=7,
+        rng=random.Random(42),
+    )
+
+    assert record is not None
+    assert model_g.training is True
+    assert record["epoch"] == 1
+    assert record["global_step"] == 10
+    assert record["text"] in ("Xin chào", "Trời hôm nay đẹp", "Tôi thích nghe nhạc")
+    assert record["duration_sec"] > 0
+
+    wav_path = Path(record["wav_path"])
+    assert wav_path == tmp_path / "epoch_samples" / "epoch_0001.wav"
+    assert wav_path.is_file()
+
+    sr, pcm = scipy.io.wavfile.read(str(wav_path))
+    assert sr == 22050
+    assert pcm.dtype.name == "int16"
+    assert pcm.size > 0
+
+    manifest_lines = (tmp_path / "epoch_samples" / "samples.jsonl").read_text(encoding="utf-8").splitlines()
+    assert len(manifest_lines) == 1
+    logged = json.loads(manifest_lines[0])
+    assert logged["epoch"] == 1
+    assert logged["text"] == record["text"]
+    assert "audio_float" not in logged
