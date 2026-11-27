@@ -218,6 +218,7 @@ class VitsModel(pl.LightningModule):
         use_sdp: bool = True,
         segment_size: int = 8192,
         prosody_dim: int = 16,
+        prosody_language_ids: list[int] | set[int] | None = None,
         # training
         dataset: list[str | Path] | None = None,
         learning_rate: float = 2e-4,
@@ -297,6 +298,11 @@ class VitsModel(pl.LightningModule):
             gin_channels=self.hparams.gin_channels,
             use_sdp=self.hparams.use_sdp,
             prosody_dim=self.hparams.prosody_dim,
+            prosody_language_ids=(
+                set(self.hparams.prosody_language_ids)
+                if getattr(self.hparams, "prosody_language_ids", None) is not None
+                else None
+            ),
         )
         self.model_d = MultiPeriodDiscriminator(
             use_spectral_norm=self.hparams.use_spectral_norm

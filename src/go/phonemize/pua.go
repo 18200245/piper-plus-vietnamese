@@ -123,6 +123,16 @@ var fixedPUA = map[string]rune{
 	"ɔɪ": 0xE062, // English diphthong (OY)
 	"œ̃": 0xE063, // French nasal open-mid front rounded vowel
 	"ɐ̃": 0xE064, // Portuguese nasal near-open central vowel
+
+	// Vietnamese (VI) — sea-g2p disambiguated tokens (PUA v3) — 8 entries
+	"t\u032a":  0xE065, // Vietnamese dental plosive t
+	"e-":       0xE066, // Vietnamese retracted front vowel (anh/ach)
+	"vi_tone1": 0xE067, // Vietnamese tone 1 (ngang)
+	"vi_tone2": 0xE068, // Vietnamese tone 2 (huyen)
+	"vi_tone3": 0xE069, // Vietnamese tone 3 (sac)
+	"vi_tone4": 0xE06A, // Vietnamese tone 4 (hoi)
+	"vi_tone5": 0xE06B, // Vietnamese tone 5 (nga)
+	"vi_tone6": 0xE06C, // Vietnamese tone 6 (nang)
 }
 
 // reversePUA maps PUA codepoints back to multi-character tokens.
@@ -138,7 +148,7 @@ var (
 var (
 	dynamicPUA  = make(map[string]string)
 	dynamicMu   sync.Mutex
-	nextDynamic = rune(0xE065) // Start after last fixed PUA (0xE064 = ɐ̃)
+	nextDynamic = rune(0xE06D) // Start after last fixed PUA (0xE06C = VI vi_tone6)
 )
 
 // maxPUA is the upper bound of the Unicode Private Use Area (BMP).
@@ -215,7 +225,7 @@ func ResetDynamicPUA() {
 		delete(reversePUA, r)
 	}
 	dynamicPUA = make(map[string]string)
-	nextDynamic = 0xE065
+	nextDynamic = 0xE06D
 }
 
 // ErrPUAExhausted is returned when the PUA codepoint space is exhausted.

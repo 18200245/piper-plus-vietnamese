@@ -90,7 +90,7 @@ _SV_FUNCTION_WORDS, _SV_STRONG_CHARS = _load_sv_function_words()
 # CJK punctuation contract (docs/spec/cjk-punctuation-contract.toml,
 # Issue #823): these characters belong to no language, and a Latin-script
 # segment gets them as ASCII, since the Latin G2P deletes what it does not know.
-_LATIN_SEGMENT_LANGUAGES = frozenset({"en", "es", "fr", "pt", "pt-PT", "sv"})
+_LATIN_SEGMENT_LANGUAGES = frozenset({"en", "es", "fr", "pt", "pt-PT", "sv", "vi"})
 _CJK_PUNCT_LATIN = {0x3001: ",", 0x3002: ".", 0xFF61: ".", 0xFF64: ","}
 
 
@@ -125,6 +125,48 @@ def normalize_cjk_punctuation_for_latin(text: str) -> str:
     return "".join(_cjk_punctuation_to_latin(ch) for ch in text)
 
 
+_VI_UNAMBIGUOUS_WORDS: frozenset[str] = frozenset(
+    {
+        "ch\u00e0o",
+        "ch\u00fang",
+        "c\u00f9ng",
+        "c\u1ee7a",
+        "c\u0169ng",
+        "gi\u1edd",
+        "kh\u00f4ng",
+        "m\u00ecnh",
+        "m\u1ed9t",
+        "m\u01b0\u1eddi",
+        "n\u00e0o",
+        "n\u00e0y",
+        "n\u1ebfu",
+        "ng\u00e0y",
+        "ng\u01b0\u1eddi",
+        "nhi\u1ec1u",
+        "nh\u1eefng",
+        "r\u1ea5t",
+        "r\u1ed3i",
+        "th\u00e1ng",
+        "th\u00ec",
+        "ti\u1ebfng",
+        "t\u00f4i",
+        "v\u00e0o",
+        "v\u1ec1",
+        "v\u00ec",
+        "vi\u1ec7t",
+        "v\u1edbi",
+    }
+)
+
+
+def _is_vietnamese_char(code: int) -> bool:
+    """Return True if *code* is a Vietnamese-specific Latin diacritic."""
+    return (
+        code in (0x0102, 0x0103, 0x0110, 0x0111, 0x01A0, 0x01A1, 0x01AF, 0x01B0)
+        or (0x1EA0 <= code <= 0x1EF9)
+    )
+
+
 class UnicodeLanguageDetector:
     """Detect language from Unicode character ranges.
 
@@ -156,9 +198,11 @@ class UnicodeLanguageDetector:
     # Hangul Syllables: U+AC00-D7AF, Jamo: U+1100-11FF, Compat Jamo: U+3130-318F
     _RE_HANGUL = re.compile(r"[\uAC00-\uD7AF\u1100-\u11FF\u3130-\u318F]")
 
-    # Basic Latin letters (including extended Latin with diacritics)
+    # Basic Latin letters (including extended Latin and Vietnamese diacritics)
     # Excludes × (U+00D7) and ÷ (U+00F7) which are in the À-ÿ range
-    _RE_LATIN = re.compile(r"[A-Za-zÀ-ÖØ-öø-ÿ]")
+    _RE_LATIN = re.compile(
+        r"[A-Za-zÀ-ÖØ-öø-ÿ\u0102\u0103\u0110\u0111\u01A0\u01A1\u01AF\u01B0\u1EA0-\u1EF9]"
+    )
 
     def __init__(self, languages: list[str], default_latin_language: str = "en"):
         self.languages = set(languages)
@@ -171,13 +215,15 @@ class UnicodeLanguageDetector:
 
         # Latin-script languages available (for disambiguation if needed)
         self._has_sv = "sv" in self.languages
+        self._has_vi = "vi" in self.languages
         self._latin_languages = {
-            lang for lang in languages if lang in ("en", "es", "pt", "fr", "sv")
+            lang for lang in languages if lang in ("en", "es", "pt", "fr", "sv", "vi")
         }
         # Conservative gate for the Swedish per-word post-pass (Issue #539):
         # only when Swedish is requested alongside >=2 Latin-script languages
         # (i.e. genuine code-switching context, not a Swedish-only model).
         self._detect_swedish = self._has_sv and len(self._latin_languages) >= 2
+        self._detect_vietnamese = self._has_vi and len(self._latin_languages) >= 2
 
     def detect_char(self, ch: str, context_has_kana: bool = False) -> str | None:  # noqa: PLR0911
         """Detect language for a single character.
@@ -300,12 +346,41 @@ def _segment_text_multilingual(
         )
         segments = [(default_lang, text)]
 
+    # Vietnamese segment-level promotion before Swedish post-pass.
+    if detector._detect_vietnamese:
+        segments = _refine_latin_segments_for_vietnamese(segments, detector)
+
     # Conservative Swedish per-word post-pass (Issue #539): re-classify
     # default-Latin segments containing a strong Swedish indicator to "sv".
     if detector._detect_swedish:
         segments = _refine_latin_segments_for_swedish(segments, detector)
 
     return segments
+
+
+def _refine_latin_segments_for_vietnamese(
+    segments: list[tuple[str, str]],
+    detector: "UnicodeLanguageDetector",
+) -> list[tuple[str, str]]:
+    """Re-classify default-Latin segments as Vietnamese when VI markers appear."""
+    default = detector.default_latin_language
+    if default == "vi":
+        return segments
+
+    result: list[tuple[str, str]] = []
+    for lang, text in segments:
+        if lang != default:
+            result.append((lang, text))
+            continue
+        is_vi = any(_is_vietnamese_char(ord(ch)) for ch in text)
+        if not is_vi:
+            for word in text.split():
+                w = word.strip(".,;:!?\"'()[]{}").lower()
+                if w in _VI_UNAMBIGUOUS_WORDS:
+                    is_vi = True
+                    break
+        result.append(("vi", text) if is_vi else (default, text))
+    return result
 
 
 def _refine_latin_segments_for_swedish(
@@ -392,6 +467,10 @@ def _get_phonemize_func(lang: str):
         from .swedish import phonemize_swedish  # noqa: PLC0415
 
         func = phonemize_swedish
+    elif lang == "vi":
+        from .vietnamese import phonemize_vietnamese  # noqa: PLC0415
+
+        func = phonemize_vietnamese
     else:
         raise ValueError(f"Unsupported language: {lang}")
 

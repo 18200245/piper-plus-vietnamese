@@ -36,6 +36,7 @@ es = []
 fr = []
 pt = []
 sv = []
+vi = ["sea-g2p>=0.9.1"]
 all = [
     "pyopenjtalk-plus>=0.3,<1",
     "numpy>=1.26.4",

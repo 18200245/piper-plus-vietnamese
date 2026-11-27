@@ -22,7 +22,13 @@ from piper_plus_g2p import available_languages, get_phonemizer
 from piper_plus_g2p.base import Phonemizer
 from piper_plus_g2p.custom_dict import CustomDictionary
 from piper_plus_g2p.multilingual import MultilingualPhonemizer
-from tests.conftest import _has_g2p_en, _has_g2pk2, _has_pyopenjtalk, _has_pypinyin
+from tests.conftest import (
+    _has_g2p_en,
+    _has_g2pk2,
+    _has_pyopenjtalk,
+    _has_pypinyin,
+    _has_sea_g2p,
+)
 
 FIXTURE = (
     Path(__file__).resolve().parents[4]
@@ -48,6 +54,7 @@ BACKENDS = {
     "en": _has_g2p_en,
     "zh": _has_pypinyin,
     "ko": _has_g2pk2,
+    "vi": _has_sea_g2p,
 }
 
 

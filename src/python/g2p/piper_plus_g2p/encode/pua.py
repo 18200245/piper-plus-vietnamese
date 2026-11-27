@@ -41,7 +41,7 @@ def _load_pua_mapping() -> dict[str, int]:
 
 
 # -------------------------------------------------------------------------
-# Fixed PUA mapping table (99 entries — PUA v2)
+# Fixed PUA mapping table (107 entries — PUA v3)
 # CRITICAL: Every codepoint here is baked into trained models.
 # Do NOT change assigned codepoints.
 # Loaded from data/pua.json — the single source of truth.
@@ -61,7 +61,7 @@ for _token, _codepoint in FIXED_PUA_MAPPING.items():
 
 
 # PUA compatibility version. Increment when new PUA mappings are added.
-PUA_COMPAT_VERSION: int = 2
+PUA_COMPAT_VERSION: int = 3
 
 
 def check_pua_compat(config: dict) -> None:

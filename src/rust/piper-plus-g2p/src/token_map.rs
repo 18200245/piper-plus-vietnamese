@@ -7,7 +7,7 @@ use std::collections::HashMap;
 use std::sync::LazyLock;
 
 /// PUA compatibility version. Increment when new PUA mappings are added.
-pub const PUA_COMPAT_VERSION: u32 = 2;
+pub const PUA_COMPAT_VERSION: u32 = 3;
 
 /// Check if a model's PUA version is compatible.
 pub fn check_pua_compat(model_version: Option<u32>) -> Result<(), String> {
@@ -155,6 +155,15 @@ pub static FIXED_PUA_MAP: LazyLock<Vec<(&'static str, u32)>> = LazyLock::new(|| 
         ("\u{0254}\u{026A}", 0xE062), // ɔɪ  English diphthong (OY)
         ("\u{0153}\u{0303}", 0xE063), // œ̃   French nasal open-mid front rounded vowel
         ("\u{0250}\u{0303}", 0xE064), // ɐ̃   Portuguese nasal near-open central vowel
+        // === Vietnamese (VI) — sea-g2p disambiguated tokens (PUA v3) ===
+        ("t\u{032A}", 0xE065),        // t̪   Vietnamese dental plosive t
+        ("e-", 0xE066),              // e-  Vietnamese retracted front vowel (anh/ach)
+        ("vi_tone1", 0xE067),        // Vietnamese tone 1 (ngang)
+        ("vi_tone2", 0xE068),        // Vietnamese tone 2 (huyen)
+        ("vi_tone3", 0xE069),        // Vietnamese tone 3 (sac)
+        ("vi_tone4", 0xE06A),        // Vietnamese tone 4 (hoi)
+        ("vi_tone5", 0xE06B),        // Vietnamese tone 5 (nga)
+        ("vi_tone6", 0xE06C),        // Vietnamese tone 6 (nang)
     ]
 });
 

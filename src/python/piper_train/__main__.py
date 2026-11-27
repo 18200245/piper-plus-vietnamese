@@ -263,6 +263,27 @@ def create_parser():
         help="Freeze Duration Predictor parameters during training. "
         "Use for fine-tuning to prevent duration prediction degradation.",
     )
+    parser.add_argument(
+        "--no-freeze-dp",
+        action="store_true",
+        default=False,
+        help="Keep Duration Predictor trainable even when transferring from a "
+        "multispeaker checkpoint (recommended when adding a new language like vi).",
+    )
+    parser.add_argument(
+        "--expand-embeddings",
+        action="store_true",
+        default=False,
+        help="Expand phoneme/language embedding tables when target config has "
+        "more symbols or languages than the source checkpoint.",
+    )
+    parser.add_argument(
+        "--prosody-language-ids",
+        type=str,
+        default=None,
+        help="Comma-separated language IDs with active prosody features "
+        "(e.g. '0,6'). Defaults to config/model default when omitted.",
+    )
     # MB-iSTFT Generator options
     parser.add_argument(
         "--c-sub-stft",
@@ -444,15 +465,93 @@ def create_parser():
     return parser
 
 
-def load_multispeaker_checkpoint(checkpoint_path: str, model: VitsModel) -> None:
+def expand_checkpoint_embeddings(saved_sd: dict, model_sd: dict) -> dict:
+    """Adapt checkpoint embedding tables and speaker layers to target model shapes.
+
+    Preserves pretrained weights for existing phoneme/language IDs while leaving
+    newly appended rows at their target initialization (new language rows are
+    seeded from an existing tonal row when available). Any speaker-specific
+    layers absent from a single-speaker target are dropped cleanly.
+    """
+    adapted = dict(saved_sd)
+
+    # Expand phoneme embedding [old_vocab, hidden] -> [new_vocab, hidden]
+    emb_key = "model_g.enc_p.emb.weight"
+    if emb_key in adapted and emb_key in model_sd:
+        saved_emb = adapted[emb_key]
+        target_emb = model_sd[emb_key]
+        if (
+            saved_emb.ndim == 2
+            and target_emb.ndim == 2
+            and saved_emb.shape[1] == target_emb.shape[1]
+            and target_emb.shape[0] > saved_emb.shape[0]
+        ):
+            expanded_emb = target_emb.clone()
+            expanded_emb[: saved_emb.shape[0]].copy_(saved_emb)
+            adapted[emb_key] = expanded_emb
+            _LOGGER.info(
+                "Expanded %s from %s to %s (preserved %d pretrained symbols)",
+                emb_key,
+                tuple(saved_emb.shape),
+                tuple(target_emb.shape),
+                saved_emb.shape[0],
+            )
+
+    # Expand language embedding [old_langs, gin] -> [new_langs, gin]
+    lang_key = "model_g.emb_lang.weight"
+    if lang_key in adapted and lang_key not in model_sd:
+        adapted.pop(lang_key, None)
+    elif lang_key in adapted and lang_key in model_sd:
+        saved_lang = adapted[lang_key]
+        target_lang = model_sd[lang_key]
+        if (
+            saved_lang.ndim == 2
+            and target_lang.ndim == 2
+            and saved_lang.shape[1] == target_lang.shape[1]
+            and target_lang.shape[0] > saved_lang.shape[0]
+        ):
+            expanded_lang = target_lang.clone()
+            expanded_lang[: saved_lang.shape[0]].copy_(saved_lang)
+            seed_row = saved_lang[2] if saved_lang.shape[0] > 2 else saved_lang.mean(dim=0)
+            for idx in range(saved_lang.shape[0], target_lang.shape[0]):
+                expanded_lang[idx].copy_(seed_row)
+            adapted[lang_key] = expanded_lang
+            _LOGGER.info(
+                "Expanded %s from %s to %s (new rows seeded from pretrained tonal language)",
+                lang_key,
+                tuple(saved_lang.shape),
+                tuple(target_lang.shape),
+            )
+
+    # Drop keys whose shapes still mismatch (e.g. speaker layers when transferring)
+    for k in list(adapted.keys()):
+        if k in model_sd and adapted[k].shape != model_sd[k].shape:
+            _LOGGER.warning(
+                "Dropping mismatched key %s: checkpoint %s != model %s",
+                k,
+                tuple(adapted[k].shape),
+                tuple(model_sd[k].shape),
+            )
+            adapted.pop(k)
+
+    return adapted
+
+
+def load_multispeaker_checkpoint(
+    checkpoint_path: str,
+    model: VitsModel,
+    *,
+    expand_embeddings: bool = False,
+) -> None:
     """Load a multispeaker checkpoint for single-speaker fine-tuning.
 
     Removes emb_g, adds emb_g mean to emb_lang rows, and loads with strict=False.
 
     Steps:
         1. Load checkpoint with ``strict=False`` (emb_g is automatically skipped).
-        2. Add emb_g mean to all emb_lang rows for conditioning distribution correction.
-        3. Preserve all emb_lang rows so the frozen Duration Predictor retains
+        2. Optionally expand phoneme/language embeddings if target vocab/languages grew.
+        3. Add emb_g mean to all emb_lang rows for conditioning distribution correction.
+        4. Preserve all emb_lang rows so the Duration Predictor retains
            correct conditioning for every language.
 
     Optimizer state is discarded; training restarts from epoch 0.
@@ -460,6 +559,8 @@ def load_multispeaker_checkpoint(checkpoint_path: str, model: VitsModel) -> None
     Args:
         checkpoint_path: Path to the multispeaker ``.ckpt`` file.
         model: A :class:`VitsModel` instance (single-speaker) to load weights into.
+        expand_embeddings: Whether to expand ``enc_p.emb`` and ``emb_lang`` tables
+            when the target model has more symbols or languages.
     """
     _LOGGER.info("Resuming from multispeaker checkpoint: %s", checkpoint_path)
 
@@ -472,6 +573,8 @@ def load_multispeaker_checkpoint(checkpoint_path: str, model: VitsModel) -> None
     normalized_sd, _ = normalize_checkpoint_state_dict(
         checkpoint["state_dict"], model.state_dict(), checkpoint_path=checkpoint_path
     )
+    if expand_embeddings:
+        normalized_sd = expand_checkpoint_embeddings(normalized_sd, model.state_dict())
     missing, unexpected = model.load_state_dict(normalized_sd, strict=False)
     _LOGGER.info(
         "Weights loaded (strict=False). Missing keys: %s. Unexpected keys: %s.",
@@ -544,6 +647,7 @@ def apply_transfer_defaults(
     if (
         getattr(args, "resume_from_multispeaker_checkpoint", None)
         and not args.freeze_dp
+        and not getattr(args, "no_freeze_dp", False)
     ):
         args.freeze_dp = True
         _LOGGER.info(
@@ -635,6 +739,24 @@ def main():
         num_speakers = int(config["num_speakers"])
         num_languages = int(config.get("num_languages", 1))
         sample_rate = int(config["audio"]["sample_rate"])
+        config_language_id_map = config.get("language_id_map", {})
+
+    if getattr(args, "prosody_language_ids", None):
+        args.prosody_language_ids = [
+            int(x.strip())
+            for x in str(args.prosody_language_ids).split(",")
+            if x.strip()
+        ]
+    elif "vi" in config_language_id_map:
+        auto_prosody_ids = []
+        if "ja" in config_language_id_map:
+            auto_prosody_ids.append(int(config_language_id_map["ja"]))
+        auto_prosody_ids.append(int(config_language_id_map["vi"]))
+        args.prosody_language_ids = sorted(set(auto_prosody_ids))
+        _LOGGER.info(
+            "Auto-enabled prosody_language_ids=%s for Vietnamese dataset",
+            args.prosody_language_ids,
+        )
 
     # Setup loggers (created once and reused across Trainer instances)
     loggers = []
@@ -792,7 +914,11 @@ def main():
         # which left the function itself unreachable — and the two had already
         # drifted apart (only the function rejected HiFi-GAN checkpoints, only
         # the inline copy remapped weight_norm keys). One implementation now.
-        load_multispeaker_checkpoint(args.resume_from_multispeaker_checkpoint, model)
+        load_multispeaker_checkpoint(
+            args.resume_from_multispeaker_checkpoint,
+            model,
+            expand_embeddings=getattr(args, "expand_embeddings", False),
+        )
 
     # チェックポイントからの再開処理を修正
     if args.resume_from_checkpoint:
@@ -817,6 +943,10 @@ def main():
                 model.state_dict(),
                 checkpoint_path=args.resume_from_checkpoint,
             )
+            if getattr(args, "expand_embeddings", False):
+                normalized_sd = expand_checkpoint_embeddings(
+                    normalized_sd, model.state_dict()
+                )
             model.load_state_dict(normalized_sd, strict=False)
 
             _LOGGER.warning(

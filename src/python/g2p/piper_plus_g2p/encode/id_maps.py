@@ -336,11 +336,32 @@ _SWEDISH_PHONEMES: list[str] = [
     "ʉː",
 ]
 
+_VIETNAMESE_PHONEMES: list[str] = [
+    # Consonants unique to Vietnamese (or missing from previous inventories)
+    "ɗ",        # U+0257 voiced alveolar implosive (đ)
+    "c",        # U+0063 voiceless palatal stop (-ch coda)
+    "t\u032a",  # t̪ dental plosive (t, distinct from aspirated th=t) -> PUA 0xE065
+    # Special retracted vowel in anh/ach
+    "e-",       # -> PUA 0xE066
+    # Vietnamese tone markers (6 Northern standard tones)
+    "vi_tone1",  # ngang -> PUA 0xE067
+    "vi_tone2",  # huyen -> PUA 0xE068
+    "vi_tone3",  # sac -> PUA 0xE069
+    "vi_tone4",  # hoi -> PUA 0xE06A
+    "vi_tone5",  # nga -> PUA 0xE06B
+    "vi_tone6",  # nang -> PUA 0xE06C
+    # Word/syllable boundary and common clause punctuation
+    " ",
+    ",",
+    ".",
+    "!",
+]
+
 
 def _build_multilingual_id_map() -> dict[str, list[int]]:
     """Build the combined multilingual phoneme_id_map.
 
-    Symbol ordering: special tokens -> JA -> EN -> ZH -> ES -> FR -> PT -> KO -> SV.
+    Symbol ordering: special tokens -> JA -> EN -> ZH -> ES -> FR -> PT -> KO -> SV -> VI.
     Shared symbols deduplicated (first occurrence wins).
     """
     all_inventories = [
@@ -352,6 +373,7 @@ def _build_multilingual_id_map() -> dict[str, list[int]]:
         _PORTUGUESE_PHONEMES,
         _KOREAN_PHONEMES,
         _SWEDISH_PHONEMES,
+        _VIETNAMESE_PHONEMES,
     ]
     symbols: list[str] = []
     seen: set[str] = set()
@@ -402,8 +424,8 @@ def get_phoneme_id_map(language: str) -> dict[str, list[int]]:
         return _build_japanese_id_map()
 
     # Single-language codes that use the multilingual map
-    # (ko and sv share symbols with other languages via the unified map)
-    if language in ("ko", "sv"):
+    # (ko, sv, and vi share symbols with other languages via the unified map)
+    if language in ("ko", "sv", "vi"):
         return _build_multilingual_id_map()
 
     # Multilingual composite code (e.g. "ja-en-zh-es-fr-pt",

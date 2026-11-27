@@ -61,7 +61,11 @@ from piper_plus_g2p.custom_dict import CustomDictionary
 from piper_plus_g2p.encode.encoder import PiperEncoder
 from piper_plus_g2p.encode.id_maps import get_phoneme_id_map
 from piper_plus_g2p.encode.pua import map_token
-from piper_plus_g2p.japanese import JapanesePhonemizer
+try:
+    from piper_plus_g2p.japanese import JapanesePhonemizer
+except ImportError:
+    # pyopenjtalk is only needed for Japanese phonemization
+    JapanesePhonemizer = None  # type: ignore[assignment,misc]
 from piper_plus_g2p.multilingual import MultilingualPhonemizer, UnicodeLanguageDetector
 
 from .f0_extraction import cache_f0
@@ -242,6 +246,23 @@ def main() -> None:
             "Using pyopenjtalk for Japanese phonemization (%s symbols)",
             len(japanese_id_map),
         )
+    elif args.language in ("vi", "ko", "sv") or (
+        len(lang_parts) == 2 and any(p in ("vi", "ko", "sv") for p in lang_parts)
+    ):
+        args.phoneme_type = PhonemeType.MULTILINGUAL
+        map_key = (
+            args.language
+            if args.language in ("vi", "ko", "sv")
+            else "-".join(sorted(lang_parts))
+        )
+        multilingual_id_map = get_phoneme_id_map(map_key)
+        args.phoneme_id_map = multilingual_id_map
+        args.lang_parts = lang_parts
+        _LOGGER.info(
+            "Using multilingual (%s) phonemization (%s symbols)",
+            args.language,
+            len(multilingual_id_map),
+        )
 
     # Convert to paths and create output directories
     args.input_dir = Path(args.input_dir)
@@ -357,14 +378,17 @@ def main() -> None:
                         else {}
                     )
                 ),
-                # Add prosody information for Japanese, bilingual, or multilingual
+                # Add prosody information for Japanese, Vietnamese, bilingual, or multilingual
                 **(
                     {
                         "prosody_num_symbols": 11,
                         "prosody_id_map": {str(i): [i] for i in range(11)},
                     }
-                    if args.language in ("ja", "ja-en")
-                    or (multilingual_id_map is not None and "ja" in lang_parts)
+                    if args.language in ("ja", "ja-en", "vi")
+                    or (
+                        multilingual_id_map is not None
+                        and ("ja" in lang_parts or "vi" in lang_parts)
+                    )
                     else {}
                 ),
             },
@@ -689,6 +713,10 @@ def phonemize_batch_openjtalk(
         else:
             _LOGGER.debug(f"No custom dictionary found at {dict_path}")
 
+        if JapanesePhonemizer is None:
+            raise ImportError(
+                "pyopenjtalk or pyopenjtalk-plus is required for Japanese phonemization"
+            )
         # Create JapanesePhonemizer from piper_plus_g2p (once per worker)
         ja_phonemizer = JapanesePhonemizer(custom_dict=custom_dict)
 
@@ -842,11 +870,14 @@ def _phonemize_batch_multilingual_impl(
         _lang_detector = None
         if hasattr(args, "lang_parts") and args.lang_parts:
             language_id_map = {lang: idx for idx, lang in enumerate(args.lang_parts)}
+            default_latin = (
+                "vi"
+                if args.lang_parts == ["vi"]
+                else ("en" if "en" in args.lang_parts else args.lang_parts[0])
+            )
             _lang_detector = UnicodeLanguageDetector(
                 args.lang_parts,
-                default_latin_language="en"
-                if "en" in args.lang_parts
-                else args.lang_parts[0],
+                default_latin_language=default_latin,
             )
         elif getattr(args, "phoneme_type", None) == PhonemeType.BILINGUAL:
             language_id_map = {"ja": 0, "en": 1}
@@ -952,7 +983,14 @@ def phonemize_batch_multilingual(
 ):
     """Multilingual (N languages) phonemization using piper_plus_g2p MultilingualPhonemizer."""
     lang_parts = getattr(args, "lang_parts", args.language.split("-"))
-    phonemizer = MultilingualPhonemizer(lang_parts)
+    default_latin = (
+        "vi"
+        if lang_parts == ["vi"]
+        else ("en" if "en" in lang_parts else lang_parts[0])
+    )
+    phonemizer = MultilingualPhonemizer(
+        lang_parts, default_latin_language=default_latin
+    )
     _phonemize_batch_multilingual_impl(
         args, queue_in, queue_out, phonemizer, "multilingual"
     )
@@ -1013,9 +1051,11 @@ def ljspeech_dataset(args: argparse.Namespace) -> Iterable[Utterance]:
     if not wav_dir.is_dir():
         wav_dir = dataset_dir / "wavs"
 
-    with open(metadata_path, encoding="utf-8") as csv_file:
+    with open(metadata_path, encoding="utf-8-sig") as csv_file:
         reader = csv.reader(csv_file, delimiter="|")
         for row in reader:
+            if not row:
+                continue
             assert len(row) >= 2, "Not enough columns"
 
             speaker: str | None = None

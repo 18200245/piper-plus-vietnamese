@@ -1,10 +1,10 @@
 /**
  * PUA (Private Use Area) mapping table.
  *
- * Canonical source: src/python/g2p/piper_plus_g2p/data/pua.json (99 entries)
+ * Canonical source: src/python/g2p/piper_plus_g2p/data/pua.json (107 entries)
  *
  * Multi-character phoneme tokens are mapped to single Unicode PUA codepoints
- * (U+E000..U+E064) so that the model's phoneme_id_map can look them up as
+ * (U+E000..U+E06C) so that the model's phoneme_id_map can look them up as
  * single characters.
  *
  * @module pua-map
@@ -14,7 +14,7 @@
  * PUA compatibility version. Increment when new PUA mappings are added.
  * @type {number}
  */
-export const PUA_COMPAT_VERSION = 2;
+export const PUA_COMPAT_VERSION = 3;
 
 /**
  * Check if a model's PUA version is compatible.
@@ -38,7 +38,7 @@ export function checkPuaCompat(modelVersion) {
 }
 
 /**
- * Forward mapping: multi-char token -> PUA character (99 entries).
+ * Forward mapping: multi-char token -> PUA character (107 entries).
  * @type {Record<string, string>}
  */
 export const PUA_MAP = {
@@ -156,6 +156,16 @@ export const PUA_MAP = {
   "\u0254\u026A": "\uE062", // ɔɪ  English diphthong (OY)
   "\u0153\u0303": "\uE063", // œ̃ French nasal open-mid front rounded vowel
   "\u0250\u0303": "\uE064", // ɐ̃ Portuguese nasal near-open central vowel
+
+  // --- Vietnamese (vi) --- 8 entries (PUA v3)
+  "t\u032A": "\uE065", // Vietnamese dental plosive t
+  "e-": "\uE066", // Vietnamese retracted front vowel (anh/ach)
+  vi_tone1: "\uE067", // Vietnamese tone 1 (ngang)
+  vi_tone2: "\uE068", // Vietnamese tone 2 (huyen)
+  vi_tone3: "\uE069", // Vietnamese tone 3 (sac)
+  vi_tone4: "\uE06A", // Vietnamese tone 4 (hoi)
+  vi_tone5: "\uE06B", // Vietnamese tone 5 (nga)
+  vi_tone6: "\uE06C", // Vietnamese tone 6 (nang)
 };
 
 /**

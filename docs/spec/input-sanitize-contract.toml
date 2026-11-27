@@ -67,7 +67,7 @@ mirrors = [
 ]
 # Every language here needs a word in word_cases. A new language without one
 # fails the gate (and the Python contract test, which reads the registry).
-languages = ["ja", "en", "zh", "ko", "es", "fr", "pt", "pt-PT", "sv", "multilingual"]
+languages = ["ja", "en", "zh", "ko", "es", "fr", "pt", "pt-PT", "sv", "vi", "multilingual"]
 
 # ---------------------------------------------------------------- runtimes
 
@@ -85,6 +85,7 @@ entry_points = [
   {file = "src/python/g2p/piper_plus_g2p/french.py", calls = "_strip_control_chars"},
   {file = "src/python/g2p/piper_plus_g2p/portuguese.py", calls = "_strip_control_chars"},
   {file = "src/python/g2p/piper_plus_g2p/swedish.py", calls = "_strip_control_chars"},
+  {file = "src/python/g2p/piper_plus_g2p/vietnamese.py", calls = "_strip_control_chars"},
   {file = "src/python/g2p/piper_plus_g2p/multilingual.py", calls = "_strip_control_chars"},
 ]
 notes = "Also the path of src/python_run/piper_plus/api/api.py (PiperPlus), which calls phonemize_with_prosody directly: its text is stripped from this change on."

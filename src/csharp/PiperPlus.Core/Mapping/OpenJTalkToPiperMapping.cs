@@ -13,7 +13,7 @@ namespace PiperPlus.Core.Mapping;
 public static class OpenJTalkToPiperMapping
 {
     // ----------------------------------------------------------------
-    // Fixed PUA mapping table (U+E000 .. U+E064) -- 99 entries
+    // Fixed PUA mapping table (U+E000 .. U+E06C) -- 107 entries
     // ----------------------------------------------------------------
 
     /// <summary>
@@ -192,6 +192,18 @@ public static class OpenJTalkToPiperMapping
             ["ɔɪ"] = '',     // ɔɪ  English diphthong (OY)
             ["œ̃"] = '',     // œ̃   French nasal open-mid front rounded vowel
             ["ɐ̃"] = '',     // ɐ̃   Portuguese nasal near-open central vowel
+
+            // =============================================================
+            // Vietnamese (VI) — U+E065–U+E06C (8 entries, PUA v3)
+            // =============================================================
+            ["t\u032A"] = '\uE065',          // t̪  Vietnamese dental plosive t
+            ["e-"] = '\uE066',               // e- Vietnamese retracted front vowel
+            ["vi_tone1"] = '\uE067',         // Vietnamese tone 1 (ngang)
+            ["vi_tone2"] = '\uE068',         // Vietnamese tone 2 (huyen)
+            ["vi_tone3"] = '\uE069',         // Vietnamese tone 3 (sac)
+            ["vi_tone4"] = '\uE06A',         // Vietnamese tone 4 (hoi)
+            ["vi_tone5"] = '\uE06B',         // Vietnamese tone 5 (nga)
+            ["vi_tone6"] = '\uE06C',         // Vietnamese tone 6 (nang)
         }.AsReadOnly();
 
     /// <summary>

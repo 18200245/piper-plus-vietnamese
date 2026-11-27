@@ -61,12 +61,22 @@ def _has_g2pk2():
         return False
 
 
+def _has_sea_g2p():
+    try:
+        import sea_g2p  # noqa: F401
+
+        return True
+    except ImportError:
+        return False
+
+
 requires_ja = pytest.mark.skipif(
     not _has_pyopenjtalk(), reason="pyopenjtalk not installed"
 )
 requires_en = pytest.mark.skipif(not _has_g2p_en(), reason="g2p-en not installed")
 requires_zh = pytest.mark.skipif(not _has_pypinyin(), reason="pypinyin not installed")
 requires_ko = pytest.mark.skipif(not _has_g2pk2(), reason="g2pk2 not installed")
+requires_vi = pytest.mark.skipif(not _has_sea_g2p(), reason="sea-g2p not installed")
 
 
 def _has_piper_train():

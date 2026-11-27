@@ -36,7 +36,7 @@ from .util import audio_float_to_int16
 _LOGGER = logging.getLogger(__name__)
 
 # Languages written in Latin script; one of them reads all Latin text.
-_LATIN_LANGUAGES = frozenset({"en", "es", "fr", "pt", "sv"})
+_LATIN_LANGUAGES = frozenset({"en", "es", "fr", "pt", "sv", "vi"})
 
 # Short-text mitigation constants (keep in sync with other runtimes — see
 # docs/spec/short-text-contract.toml).
@@ -695,6 +695,8 @@ class PiperVoice:
         languages = ["ja", "en", "zh", "es", "fr", "pt"]
         if self.config.language_id_map and "sv" in self.config.language_id_map:
             languages.append("sv")
+        if self.config.language_id_map and "vi" in self.config.language_id_map:
+            languages.append("vi")
         return languages
 
     def _phonemize_one_factory(self, language_id: int | None = None):

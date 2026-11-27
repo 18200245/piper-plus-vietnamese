@@ -358,6 +358,11 @@ class _DominantLanguageDetector:
 
     def detect(self, text: str) -> int:
         """Return the language_id for the dominant language in text."""
+        if "vi" in self._language_id_map:
+            from piper_plus_g2p.multilingual import _is_vietnamese_char  # noqa: PLC0415
+
+            if any(_is_vietnamese_char(ord(ch)) for ch in text):
+                return self._language_id_map["vi"]
         context_has_kana = self._detector.has_kana(text)
         counts: dict[str, int] = {}
         for ch in text:
@@ -742,7 +747,7 @@ def main():
     parser.add_argument(
         "--language",
         default="ja",
-        help="Language for --text mode. Single (ja, en, zh, ko, es, pt, fr, sv) "
+        help="Language for --text mode. Single (ja, en, zh, ko, es, pt, fr, sv, vi) "
         "or multilingual combo (ja-en, ja-en-zh-ko-sv, etc.) (default: ja)",
     )
     parser.add_argument(

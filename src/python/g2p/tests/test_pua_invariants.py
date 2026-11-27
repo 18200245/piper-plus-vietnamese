@@ -31,6 +31,7 @@ from piper_plus_g2p.encode.id_maps import (
     _SPANISH_PHONEMES,
     _SPECIAL_TOKENS,
     _SWEDISH_PHONEMES,
+    _VIETNAMESE_PHONEMES,
     get_phoneme_id_map,
 )
 from piper_plus_g2p.encode.pua import (
@@ -121,6 +122,7 @@ class TestInventoryCoverage:
             ("_PORTUGUESE_PHONEMES", _PORTUGUESE_PHONEMES),
             ("_KOREAN_PHONEMES", _KOREAN_PHONEMES),
             ("_SWEDISH_PHONEMES", _SWEDISH_PHONEMES),
+            ("_VIETNAMESE_PHONEMES", _VIETNAMESE_PHONEMES),
         ],
     )
     def test_inventory_multi_codepoint_tokens_have_pua_mapping(
@@ -186,7 +188,7 @@ class TestGeneratedMapInvariants:
 
     @pytest.mark.parametrize(
         "language",
-        ["ja", "ko", "sv", "multilingual", "ja-en-zh-es-fr-pt"],
+        ["ja", "ko", "sv", "vi", "multilingual", "ja-en-zh-es-fr-pt"],
     )
     def test_all_keys_are_single_codepoint(self, language: str):
         pid_map = get_phoneme_id_map(language)

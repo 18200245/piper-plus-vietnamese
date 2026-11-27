@@ -65,10 +65,10 @@ class TestM12PhonemeInventory:
 
     @pytest.mark.unit
     def test_pua_max_codepoint(self):
-        # PUA v2 (2026-05): added en/fr/pt multi-CP entries at 0xE062-0xE064.
+        # PUA v3: added vi multi-CP entries at 0xE065-0xE06C on top of v2 (0xE062-0xE064).
         # Allocation map lives in docs/spec/pua-contract.toml.
         max_cp = max(FIXED_PUA_MAPPING.values())
-        assert max_cp <= 0xE064, f"Max PUA codepoint 0x{max_cp:04X} exceeds PUA v2 range"
+        assert max_cp <= 0xE06C, f"Max PUA codepoint 0x{max_cp:04X} exceeds PUA v3 range"
 
     @pytest.mark.unit
     def test_sv_pua_range(self):

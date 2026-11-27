@@ -92,15 +92,15 @@ forward_compat_policy = "strict"
 # map (verified by digest below), so no id was reordered or removed. That is
 # what makes this a minor bump (1.0 -> 1.1) rather than a breaking change.
 _strict = true
-num_symbols = 185
-symbol_set_version = "1.1"
+num_symbols = 199
+symbol_set_version = "1.2"
 embedding_dim = 192    # vits.text_encoder.emb.weight.shape = [num_symbols, 192]
 
 # sha256 of the symbols joined by a single space, ordered by id. Pins the
 # *ordering*, which a length check cannot: v1.12.0 shipped 185 symbols whose
 # ids 94/149/153 disagreed with the published models, and a count-only gate
 # saw nothing wrong.
-inventory_sha256 = "66dd9d23fee924faefe93e033499fdbc2c6d4a601ae19a2393590dbb565d0ff0"
+inventory_sha256 = "46afb7a63f8bb2b99a869ee7179b866cb4ea77ad6ae3ad38090b4d8b6d46de8b"
 
 # ---------------------------------------------------------------------------
 # Released snapshots
@@ -134,6 +134,11 @@ models = [
 #
 #   173 U+0267 ɧ   174 U+0275 ɵ   175 U+028F ʏ
 #   176-184 U+E059..U+E061 (PUA-encoded multi-codepoint Swedish vowels)
+#
+# ids 185-198, Vietnamese via sea-g2p (PUA v3 / symbol_set_version 1.2):
+#   185 U+0257 ɗ   186 U+0063 c
+#   187-194 U+E065..U+E06C (t̪, e-, vi_tone1..vi_tone6)
+#   195 ' '   196 ','   197 '.'   198 '!'
 
 # ---------------------------------------------------------------------------
 # Forward Compatibility Strategy
@@ -156,7 +161,7 @@ models = [
 # `free_slots = [168..172]` used to be listed here as reserved. They are not:
 # 168 is `ɰ` (Korean) and 169-172 are `ɖ ʈ ɳ ɭ` (Swedish), all allocated. The
 # next genuinely unused id is simply `num_symbols`.
-next_free_id = 185
+next_free_id = 199
 extension_policy = "prefer-A"  # see "Forward Compatibility Strategy" above
 backward_compat_window = "indefinite"  # never break released models silently
 required_change_set_for_minor_bump = [

@@ -14,9 +14,9 @@ import Foundation
 
 public enum PUAMap {
     /// Compatibility version (matches Rust `PUA_COMPAT_VERSION`).
-    public static let compatVersion: UInt32 = 2
+    public static let compatVersion: UInt32 = 3
 
-    /// All 99 (token, codepoint) pairs in canonical order.
+    /// All 107 (token, codepoint) pairs in canonical order.
     public static let fixedMap: [(String, UInt32)] = [
         // === Japanese (U+E000-E01C) ===
         // Long vowels
@@ -146,6 +146,15 @@ public enum PUAMap {
         ("\u{0254}\u{026A}", 0xE062),
         ("\u{0153}\u{0303}", 0xE063),
         ("\u{0250}\u{0303}", 0xE064),
+        // === Vietnamese (U+E065-E06C, PUA v3) ===
+        ("t\u{032A}", 0xE065),
+        ("e-", 0xE066),
+        ("vi_tone1", 0xE067),
+        ("vi_tone2", 0xE068),
+        ("vi_tone3", 0xE069),
+        ("vi_tone4", 0xE06A),
+        ("vi_tone5", 0xE06B),
+        ("vi_tone6", 0xE06C),
     ]
 
     private static let tokenToPuaTable: [String: Character] = {

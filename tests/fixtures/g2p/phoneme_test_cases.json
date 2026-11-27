@@ -2940,7 +2940,7 @@
       "description": "Issue #823: CJK comma and fullwidth ! inside Spanish"
     }
   ],
-  "pua_map_count": 99,
+  "pua_map_count": 107,
   "pua_spot_checks": [
     {
       "token": "a:",
@@ -3187,7 +3187,15 @@
     "\u0289\u02d0": "0xE061",
     "\u0254\u026a": "0xE062",
     "\u0153\u0303": "0xE063",
-    "\u0250\u0303": "0xE064"
+    "\u0250\u0303": "0xE064",
+    "t\u032a": "0xE065",
+    "e-": "0xE066",
+    "vi_tone1": "0xE067",
+    "vi_tone2": "0xE068",
+    "vi_tone3": "0xE069",
+    "vi_tone4": "0xE06A",
+    "vi_tone5": "0xE06B",
+    "vi_tone6": "0xE06C"
   },
   "detect_test_cases": [
     {

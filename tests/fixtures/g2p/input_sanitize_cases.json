@@ -442,6 +442,42 @@
       "dirty": "hej\u0085hej"
     },
     {
+      "language": "vi",
+      "control": "U+0000",
+      "clean": "tiếng",
+      "dirty": "ti\u0000ếng"
+    },
+    {
+      "language": "vi",
+      "control": "U+007F",
+      "clean": "tiếng",
+      "dirty": "ti\u007fếng"
+    },
+    {
+      "language": "vi",
+      "control": "U+009F",
+      "clean": "tiếng",
+      "dirty": "ti\u009fếng"
+    },
+    {
+      "language": "vi",
+      "control": "U+000B",
+      "clean": "xin chào",
+      "dirty": "xin\u000bchào"
+    },
+    {
+      "language": "vi",
+      "control": "U+000C",
+      "clean": "xin chào",
+      "dirty": "xin\fchào"
+    },
+    {
+      "language": "vi",
+      "control": "U+0085",
+      "clean": "xin chào",
+      "dirty": "xin\u0085chào"
+    },
+    {
       "language": "multilingual",
       "control": "U+000C",
       "clean": "hello 你好",

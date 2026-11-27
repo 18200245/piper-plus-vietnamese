@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "description": "PUA mapping table \u2014 shared across Python/Rust/JS",
   "entries": [
     {"token": "a:", "codepoint": "0xE000", "language": "ja", "description": "Long vowel a"},
@@ -100,6 +100,14 @@
     {"token": "\u0289\u02d0", "codepoint": "0xE061", "language": "sv", "description": "close central rounded long"},
     {"token": "\u0254\u026a", "codepoint": "0xE062", "language": "en", "description": "Diphthong \u0254\u026a (English OY)"},
     {"token": "\u0153\u0303", "codepoint": "0xE063", "language": "fr", "description": "Nasal open-mid front rounded vowel \u0153\u0303"},
-    {"token": "\u0250\u0303", "codepoint": "0xE064", "language": "pt", "description": "Nasal near-open central vowel \u0250\u0303"}
+    {"token": "\u0250\u0303", "codepoint": "0xE064", "language": "pt", "description": "Nasal near-open central vowel \u0250\u0303"},
+    {"token": "t\u032a", "codepoint": "0xE065", "language": "vi", "description": "Vietnamese dental plosive t (distinct from aspirated th)"},
+    {"token": "e-", "codepoint": "0xE066", "language": "vi", "description": "Vietnamese retracted front vowel in anh/ach"},
+    {"token": "vi_tone1", "codepoint": "0xE067", "language": "vi", "description": "Vietnamese tone 1 (ngang / level)"},
+    {"token": "vi_tone2", "codepoint": "0xE068", "language": "vi", "description": "Vietnamese tone 2 (huyen / low falling)"},
+    {"token": "vi_tone3", "codepoint": "0xE069", "language": "vi", "description": "Vietnamese tone 3 (sac / high rising)"},
+    {"token": "vi_tone4", "codepoint": "0xE06A", "language": "vi", "description": "Vietnamese tone 4 (hoi / dipping)"},
+    {"token": "vi_tone5", "codepoint": "0xE06B", "language": "vi", "description": "Vietnamese tone 5 (nga / creaky rising)"},
+    {"token": "vi_tone6", "codepoint": "0xE06C", "language": "vi", "description": "Vietnamese tone 6 (nang / glottalized low)"}
   ]
 }
