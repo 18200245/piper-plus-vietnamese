@@ -105,15 +105,17 @@ def _build_trainer(args, loggers, num_gpus, num_speakers):
     callbacks = []
     if args.checkpoint_epochs is not None:
         checkpoint_dir = Path(args.default_root_dir) / "checkpoints"
-        callbacks.append(
-            ModelCheckpoint(
-                dirpath=str(checkpoint_dir),
-                every_n_epochs=args.checkpoint_epochs,
-                save_top_k=args.save_top_k,
-                save_last=True,
-                save_on_train_epoch_end=True,
-            )
-        )
+        ckpt_kwargs = {
+            "dirpath": str(checkpoint_dir),
+            "every_n_epochs": args.checkpoint_epochs,
+            "save_top_k": args.save_top_k,
+            "save_last": True,
+            "save_on_train_epoch_end": True,
+        }
+        if args.save_top_k > 1:
+            ckpt_kwargs["monitor"] = "loss_gen_all"
+            ckpt_kwargs["mode"] = "min"
+        callbacks.append(ModelCheckpoint(**ckpt_kwargs))
         _LOGGER.debug(
             "Checkpoints will be saved every %s epoch(s) to %s",
             args.checkpoint_epochs,
